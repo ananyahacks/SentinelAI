@@ -91,7 +91,7 @@ Dashboard Visualization
 ## Repository Structure
 
 ```
-datasets/
+raw/
 notebooks/
 frontend/
 backend/
