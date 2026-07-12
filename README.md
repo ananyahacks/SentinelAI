@@ -31,7 +31,7 @@ The system combines behavioral profiling, feature engineering, anomaly detection
 
 - React.js
 - HTML5
-- CSS3
+- Tailwind CSS
 - JavaScript
 
 ### Backend
@@ -156,3 +156,4 @@ Example evaluation metrics:
 ## Authors
 
 Ananya Chakraborty
+Rushati Ray
