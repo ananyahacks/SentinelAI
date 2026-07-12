@@ -117,6 +117,15 @@ The dataset simulates:
 - Insider threat scenarios
 
 ---
+## Dashboard Visualisation
+- Admin view
+- Analyst View and report generation
+- Admin and Analyst can both view interactive dashboard with risk trend
+- Alerts are visible
+- Visualisation of detected anomalies
+- Current risk trajectory compared to the normal range visibility
+- View of generated reports on the user behaviours
+- Notification channels
 
 ## Machine Learning Pipeline
 
