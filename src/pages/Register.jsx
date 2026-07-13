@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowRight, Loader2, Building2, CheckCircle2 } from 'lucide-react'
+import { ArrowRight, Loader2, Building2, Mail, CheckCircle2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 
 const steps = ['Company', 'Admin account', 'Confirm']
@@ -13,7 +13,7 @@ export default function Register() {
   const [error, setError] = useState('')
   const [form, setForm] = useState({
     companyName: '',
-    industry: 'Financial Services',
+    companyEmail: '',
     orgSize: '51–200 employees',
     fullName: '',
     email: '',
@@ -94,10 +94,17 @@ export default function Register() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted mb-1.5">Industry</label>
-                  <select value={form.industry} onChange={update('industry')} className="w-full bg-elevated border border-hairline rounded-lg px-3.5 py-2.5 text-sm text-ink focus:border-signal transition-colors">
-                    {['Financial Services', 'Healthcare', 'SaaS / Technology', 'Retail', 'Manufacturing', 'Government'].map((o) => <option key={o}>{o}</option>)}
-                  </select>
+                  <label className="block text-xs font-medium text-muted mb-1.5">Company email</label>
+                  <div className="relative">
+                    <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint" />
+                    <input
+                      type="email"
+                      value={form.companyEmail}
+                      onChange={update('companyEmail')}
+                      placeholder="hello@northbridge.com"
+                      className="w-full bg-elevated border border-hairline rounded-lg pl-10 pr-3.5 py-2.5 text-sm text-ink placeholder:text-faint focus:border-signal transition-colors"
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted mb-1.5">Organization size</label>
@@ -134,7 +141,7 @@ export default function Register() {
             {step === 2 && (
               <div className="space-y-3">
                 <p className="text-xs text-muted mb-2">Review your details before creating the workspace.</p>
-                {[['Company', form.companyName], ['Industry', form.industry], ['Size', form.orgSize], ['Admin', form.fullName], ['Email', form.email]].map(([k, v]) => (
+                {[['Company', form.companyName], ['Company email', form.companyEmail], ['Size', form.orgSize], ['Admin', form.fullName], ['Email', form.email]].map(([k, v]) => (
                   <div key={k} className="flex items-center justify-between py-2 border-b border-hairline last:border-0">
                     <span className="text-xs text-faint">{k}</span>
                     <span className="text-sm text-ink font-medium">{v || '—'}</span>
