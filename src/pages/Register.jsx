@@ -14,7 +14,6 @@ export default function Register() {
   const [form, setForm] = useState({
     companyName: '',
     companyEmail: '',
-    orgSize: '51–200 employees',
     fullName: '',
     email: '',
     password: '',
@@ -106,12 +105,6 @@ export default function Register() {
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted mb-1.5">Organization size</label>
-                  <select value={form.orgSize} onChange={update('orgSize')} className="w-full bg-elevated border border-hairline rounded-lg px-3.5 py-2.5 text-sm text-ink focus:border-signal transition-colors">
-                    {['1–50 employees', '51–200 employees', '201–1000 employees', '1000+ employees'].map((o) => <option key={o}>{o}</option>)}
-                  </select>
-                </div>
               </>
             )}
 
@@ -141,7 +134,7 @@ export default function Register() {
             {step === 2 && (
               <div className="space-y-3">
                 <p className="text-xs text-muted mb-2">Review your details before creating the workspace.</p>
-                {[['Company', form.companyName], ['Company email', form.companyEmail], ['Size', form.orgSize], ['Admin', form.fullName], ['Email', form.email]].map(([k, v]) => (
+                {[['Company', form.companyName], ['Company email', form.companyEmail], ['Admin', form.fullName], ['Email', form.email]].map(([k, v]) => (
                   <div key={k} className="flex items-center justify-between py-2 border-b border-hairline last:border-0">
                     <span className="text-xs text-faint">{k}</span>
                     <span className="text-sm text-ink font-medium">{v || '—'}</span>
