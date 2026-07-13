@@ -1,14 +1,40 @@
 const ActivityLog = require('../models/activitylogs.model')
+const userModel = require('../models/user.model')
 const RiskScore = require('../models/risk.model')
 const { getRiskScores } = require('../services/gnn_services')
+const RISK_LEVEL_THRESHOLDS = { low: 0.3, medium: 0.6, high: 0.85 } 
 
-/**
- * Runs anomaly detection over a company's recent activity logs and
- * persists per-employee risk scores (max risk across their events in
- * the window).
- *
- * Body (optional): { sinceDays: number } - defaults to 7 days of logs
- */
+function riskLevelOf(score) {
+    if (score >= RISK_LEVEL_THRESHOLDS.high) return "CRITICAL"
+    if (score >= RISK_LEVEL_THRESHOLDS.medium) return "HIGH"
+    if (score >= RISK_LEVEL_THRESHOLDS.low) return "MEDIUM"
+    return "LOW"
+}
+
+
+async function resolveUserIds(companyId, logs) {
+    const map = new Map()
+    for (const log of logs) {
+        if (log.employeeName && log.userId && !map.has(log.employeeName)) {
+            map.set(log.employeeName, log.userId)
+        }
+    }
+
+    const unresolved = [...new Set(logs.map(l => l.employeeName).filter(name => name && !map.has(name)))]
+    if (unresolved.length > 0) {
+        const users = await userModel.find({
+            company: companyId,
+            username: { $in: unresolved }
+        }).select('_id username').lean()
+
+        for (const u of users) {
+            map.set(u.username, u._id)
+        }
+    }
+
+    return map
+}
+
 async function runAnomalyDetection(req, res) {
     try {
         const companyId = req.user.companyId
@@ -29,21 +55,33 @@ async function runAnomalyDetection(req, res) {
         const result = await getRiskScores(companyId, logs)
 
         if (result.encoders_are_placeholder) {
-            // Surface this loudly - scores are not trustworthy until the
-            // real label encoders are deployed alongside the model.
             console.warn(
                 "[anomaly] GNN service is running with placeholder encoders. " +
                 "Risk scores are not meaningful until encoders.pkl is deployed."
             )
         }
 
-        const docs = result.userScores.map(s => ({
-            companyId,
-            employeeName: s.employeeName,
-            riskScore: s.riskScore,
-            isAnomaly: s.isAnomaly,
-            computedAt: new Date()
-        }))
+        const userIdMap = await resolveUserIds(companyId, logs)
+
+        const docs = []
+        const skipped = []
+        for (const s of result.userScores) {
+            const userId = userIdMap.get(s.employeeName)
+            if (!userId) {
+                skipped.push(s.employeeName)
+                continue
+            }
+            docs.push({
+                companyId,
+                userId,
+                employeeName: s.employeeName,
+                anomalyScore: s.riskScore,
+                riskScore: s.riskScore,
+                riskLevel: riskLevelOf(s.riskScore),
+                prediction: s.isAnomaly ? "ANOMALY" : "NORMAL",
+                analyzedAt: new Date()
+            })
+        }
 
         if (docs.length > 0) {
             await RiskScore.insertMany(docs)
@@ -53,6 +91,8 @@ async function runAnomalyDetection(req, res) {
             message: "Anomaly detection completed",
             encodersArePlaceholder: result.encoders_are_placeholder,
             totalUsersScored: result.userScores.length,
+            persistedCount: docs.length,
+            skippedNoUserId: skipped, // employees we couldn't match to a User record
             anomaliesFound: result.userScores.filter(s => s.isAnomaly).length,
             userScores: result.userScores,
             eventScores: result.eventScores
@@ -63,22 +103,20 @@ async function runAnomalyDetection(req, res) {
     }
 }
 
-/**
- * Returns the most recent risk score per employee for the company.
- */
 async function getLatestRiskScores(req, res) {
     try {
         const companyId = req.user.companyId
 
         const latest = await RiskScore.aggregate([
             { $match: { companyId } },
-            { $sort: { computedAt: -1 } },
+            { $sort: { analyzedAt: -1 } },
             {
                 $group: {
                     _id: "$employeeName",
                     riskScore: { $first: "$riskScore" },
-                    isAnomaly: { $first: "$isAnomaly" },
-                    computedAt: { $first: "$computedAt" }
+                    riskLevel: { $first: "$riskLevel" },
+                    prediction: { $first: "$prediction" },
+                    analyzedAt: { $first: "$analyzedAt" }
                 }
             },
             { $sort: { riskScore: -1 } }
@@ -88,8 +126,9 @@ async function getLatestRiskScores(req, res) {
             latest.map(doc => ({
                 employeeName: doc._id,
                 riskScore: doc.riskScore,
-                isAnomaly: doc.isAnomaly,
-                computedAt: doc.computedAt
+                riskLevel: doc.riskLevel,
+                isAnomaly: doc.prediction === "ANOMALY",
+                analyzedAt: doc.analyzedAt
             }))
         )
     } catch (err) {

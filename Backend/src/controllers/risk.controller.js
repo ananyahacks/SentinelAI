@@ -1,10 +1,9 @@
 const RiskScore = require("../models/risk.model");
 
-// Get all risk scores
 const getAllRiskScores = async (req, res) => {
   try {
     const scores = await RiskScore.find({
-      companyId: req.user.companyid,
+      companyId: req.user.companyId, 
     }).sort({ createdAt: -1 });
 
     res.status(200).json(scores);
@@ -15,11 +14,11 @@ const getAllRiskScores = async (req, res) => {
   }
 };
 
-// Get one employee's risk score
+
 const getRiskScoreByUser = async (req, res) => {
   try {
     const score = await RiskScore.findOne({
-      companyId: req.user.companyid,
+      companyId: req.user.companyId, // FIXED
       userId: req.params.userId,
     });
 

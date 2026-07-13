@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-
 const riskScoreSchema = new mongoose.Schema(
   {
     companyId: {

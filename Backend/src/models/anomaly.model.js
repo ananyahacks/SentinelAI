@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-
 const anomalySchema = new mongoose.Schema(
 {
     companyId:{

@@ -1,25 +1,6 @@
 const axios = require('axios')
-
-// CUSTOMIZE: set GNN_SERVICE_URL in your .env, e.g. http://localhost:8000
 const GNN_SERVICE_URL = process.env.GNN_SERVICE_URL || 'http://localhost:8000'
 
-/**
- * Sends a batch of RAW activity-log events to the Python GNN service.
- * These must be per-event (one per login/session) - the model was
- * trained at that grain, not on pre-aggregated per-user stats.
- *
- * NOTE: several fields the model needs (country, filesAccessed,
- * emailsSent, databaseQueries, usbUsage, vpnUsage) are not currently
- * collected by activity.controller.js's CSV upload. They're included
- * here as optional so the service can still run in "best effort" mode
- * on your existing schema, but scores will be more accurate once these
- * are actually captured - see activitylogs.model.updated.js and
- * activity.controller.updated.js for the schema/upload changes needed.
- *
- * @param {string} companyId
- * @param {Array<Object>} logs - raw ActivityLog documents (plain objects)
- * @returns {Promise<{encoders_are_placeholder: boolean, eventScores: Array, userScores: Array}>}
- */
 async function getRiskScores(companyId, logs) {
     if (!logs || logs.length === 0) {
         return { encoders_are_placeholder: false, eventScores: [], userScores: [] }
