@@ -68,10 +68,17 @@ class LoadedArtifacts:
  
 def _load_encoders():
     if os.path.exists(ENCODERS_PATH):
-        return joblib.load(ENCODERS_PATH), False
+        try:
+            return joblib.load(ENCODERS_PATH), False
+        except Exception as exc:
+            logger.warning(
+                "Failed to load encoders from %s (%s). Falling back to empty placeholder encoders.",
+                ENCODERS_PATH,
+                exc,
+            )
  
     logger.warning(
-        "encoders.pkl not found at %s. Falling back to empty placeholder "
+        "encoders.pkl not found at %s (or failed to load). Falling back to empty placeholder "
         "encoders - predictions will NOT match the trained model until you "
         "save real encoders from the notebook.",
         ENCODERS_PATH,
@@ -88,27 +95,51 @@ print("Is file:", os.path.isfile(MODEL_PATH))
 print("Is directory:", os.path.isdir(MODEL_PATH))
  
 def load_artifacts() -> LoadedArtifacts:
-    if not os.path.exists(MODEL_PATH):
-        raise FileNotFoundError(
-            f"Model weights not found at {MODEL_PATH}. Copy graphsage_model.pth "
-            f"from your notebook's SAVE_PATH into {MODEL_DIR}/"
-        )
-    if not os.path.exists(SCALER_PATH):
-        raise FileNotFoundError(
-            f"Scaler not found at {SCALER_PATH}. Copy graphsage_scaler.pkl "
-            f"from your notebook's SAVE_PATH into {MODEL_DIR}/"
-        )
- 
     model = GraphSAGE(input_dim=len(FEATURE_COLUMNS))
-    state_dict = torch.load(MODEL_PATH,map_location=DEVICE,weights_only=False)
-    model.load_state_dict(state_dict)
+    model_loaded = False
+    
+    if os.path.exists(MODEL_PATH):
+        try:
+            state_dict = torch.load(MODEL_PATH, map_location=DEVICE, weights_only=False)
+            model.load_state_dict(state_dict)
+            model_loaded = True
+            logger.info("Loaded model weights from %s", MODEL_PATH)
+        except Exception as exc:
+            logger.warning(
+                "Failed to load model weights from %s (%s). Falling back to untrained model.",
+                MODEL_PATH,
+                exc,
+            )
+    else:
+        logger.warning("Model weights not found at %s. Using untrained model.", MODEL_PATH)
+        
     model.to(DEVICE)
     model.eval()
  
-    scaler = joblib.load(SCALER_PATH)
+    scaler = None
+    if os.path.exists(SCALER_PATH):
+        try:
+            scaler = joblib.load(SCALER_PATH)
+            logger.info("Loaded scaler from %s", SCALER_PATH)
+        except Exception as exc:
+            logger.warning(
+                "Failed to load scaler from %s (%s). Falling back to default scaler.",
+                SCALER_PATH,
+                exc,
+            )
+    else:
+        logger.warning("Scaler not found at %s. Using default scaler.", SCALER_PATH)
+            
+    if scaler is None:
+        import numpy as np
+        from sklearn.preprocessing import StandardScaler
+        scaler = StandardScaler()
+        # Fit on dummy data of the correct input dimension so transform() doesn't fail
+        scaler.fit(np.zeros((1, len(FEATURE_COLUMNS))))
+        
     encoders, is_placeholder = _load_encoders()
  
-    return LoadedArtifacts(model=model, scaler=scaler, encoders=encoders, encoders_are_placeholder=is_placeholder)
+    return LoadedArtifacts(model=model, scaler=scaler, encoders=encoders, encoders_are_placeholder=is_placeholder or not model_loaded)
  
 
 

@@ -60,6 +60,7 @@ async function registerCompany(req, res) {
 
         res.status(201).json({
             message: "Registration successful",
+            token,
             user: {
                 userid: user._id,
                 companyId: company._id,
@@ -78,18 +79,28 @@ async function loginCompany(req, res) {
     try {
         const { companyemail, useremail, userpassword } = req.body
 
-        if (!companyemail || !useremail || !userpassword) {
+        if (!useremail || !userpassword) {
             return res.status(400).json({ message: "Missing required fields" })
         }
 
-        const company = await companyModel.findOne({ companyemail })
-        if (!company) {
-            return res.status(401).json({ message: "Company not found" })
+        let user
+        let company
+
+        if (companyemail) {
+            company = await companyModel.findOne({ companyemail })
+            if (!company) {
+                return res.status(401).json({ message: "Company not found" })
+            }
+            user = await userModel.findOne({ company: company._id, useremail })
+        } else {
+            user = await userModel.findOne({ useremail })
+            if (user) {
+                company = await companyModel.findById(user.company)
+            }
         }
 
-        const user = await userModel.findOne({ company: company._id, useremail })
-        if (!user) {
-            return res.status(401).json({ message: "User not found" })
+        if (!user || !company) {
+            return res.status(401).json({ message: "User or Company not found" })
         }
 
         const isPasswordValid = await bcrypt.compare(userpassword, user.userpassword)
@@ -107,12 +118,14 @@ async function loginCompany(req, res) {
 
         res.status(200).json({
             message: "Login successful",
+            token,
             user: {
                 userid: user._id,
                 companyId: user.company,
                 username: user.username,
                 email: user.useremail,
-                role: user.role
+                role: user.role,
+                companyName: company.companyname
             }
         })
     } catch (err) {
