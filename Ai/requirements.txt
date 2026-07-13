@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+torch
+torchvision
+torchaudio
+torch-geometric
+networkx
+scikit-learn
+pandas
+numpy
+joblib
+python-multipart
+pydantic
+matplotlib
+seaborn
+tqdm

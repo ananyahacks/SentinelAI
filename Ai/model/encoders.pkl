@@ -1,0 +1,2 @@
+import joblib
+encoders = joblib.load(r"D:\si-models\encoders(1).pkl")

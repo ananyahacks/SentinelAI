@@ -1,0 +1,3 @@
+import joblib
+
+scaler = joblib.load(r"D:\si-models\graphsage_scaler.pkl")

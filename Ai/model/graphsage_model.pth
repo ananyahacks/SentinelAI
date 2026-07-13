@@ -1,0 +1,13 @@
+import torch
+from model_def import GraphSAGE   
+
+model = GraphSAGE()
+
+model.load_state_dict(
+    torch.load(
+        r"D:\si-models\graphsage_model.pth",
+        map_location=torch.device("cpu")
+    )
+)
+
+model.eval()
