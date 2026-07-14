@@ -165,4 +165,3 @@ Example evaluation metrics:
 
 - Ananya Chakraborty
 - Rushati Ray
-- Partha Protim Mondal
