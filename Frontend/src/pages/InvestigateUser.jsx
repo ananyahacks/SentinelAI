@@ -1,17 +1,90 @@
 import { useParams, Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import { ArrowLeft, Mail, Building2, Clock, AlertTriangle } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import RiskGauge from '../components/RiskGauge.jsx'
 import RiskBadge from '../components/RiskBadge.jsx'
 import { users, anomalies } from '../data/mockData.js'
+import axiosClient from '../api/axiosClient.js'
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 export default function InvestigateUser() {
   const { userId } = useParams()
-  const user = users.find((u) => u.id === userId) || users[0]
-  const userAnomalies = anomalies.filter((a) => a.userId === user.id)
-  const trendData = user.trend.map((v, i) => ({ day: DAYS[i], score: v, baseline: Math.round(v * 0.35) }))
+  const [currentUser, setCurrentUser] = useState(null)
+  const [userAnoms, setUserAnoms] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadUserDetail() {
+      try {
+        const response = await axiosClient.get('/anomaly/scores')
+        const allScores = response.data
+        
+        let found = null
+        if (allScores && allScores.length > 0) {
+          found = allScores.find(sc => sc.userId === userId || sc.employeeName === userId)
+          if (!found) {
+            found = allScores.find(sc => sc.employeeName.toLowerCase().replace(/\s+/g, '-') === userId)
+          }
+        }
+        
+        if (found) {
+          const mappedUser = {
+            id: found.userId || userId,
+            name: found.employeeName,
+            dept: 'Operations',
+            role: 'Staff',
+            riskScore: Math.round(found.riskScore * 100),
+            tier: found.riskLevel === 'CRITICAL' ? 'Critical' : found.riskLevel === 'HIGH' ? 'High' : found.riskLevel === 'MEDIUM' ? 'Medium' : 'Low',
+            lastActive: 'Just now',
+            anomalies: found.isAnomaly ? 1 : 0,
+            trend: [20, 25, 30, found.riskScore * 100]
+          }
+          setCurrentUser(mappedUser)
+          
+          if (found.isAnomaly) {
+            setUserAnoms([{
+              id: `A-${9001}`,
+              user: found.employeeName,
+              userId: found.userId || userId,
+              type: found.riskLevel === 'CRITICAL' ? 'Bulk file download' : 'Off-hours access',
+              severity: found.riskLevel === 'CRITICAL' ? 'Critical' : found.riskLevel === 'HIGH' ? 'High' : 'Medium',
+              time: new Date(found.analyzedAt).toLocaleString(),
+              detail: `${found.employeeName} has anomaly score of ${Math.round(found.riskScore * 100)}`,
+              status: 'Open'
+            }])
+          } else {
+            setUserAnoms([])
+          }
+        } else {
+          const mockUser = users.find(u => u.id === userId) || users[0]
+          setCurrentUser(mockUser)
+          setUserAnoms(anomalies.filter(a => a.userId === mockUser.id))
+        }
+      } catch (err) {
+        console.error('Failed to load user detail, using mock', err)
+        const mockUser = users.find(u => u.id === userId) || users[0]
+        setCurrentUser(mockUser)
+        setUserAnoms(anomalies.filter(a => a.userId === mockUser.id))
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadUserDetail()
+  }, [userId])
+
+  if (!currentUser) {
+    return (
+      <div className="flex items-center justify-center min-h-[300px]">
+        <p className="text-sm text-grey font-mono animate-pulse">Loading identity profile...</p>
+      </div>
+    )
+  }
+
+  const user = currentUser
+  const userAnomalies = userAnoms
+  const trendData = user.trend.map((v, i) => ({ day: DAYS[i] || `Day ${i + 1}`, score: v, baseline: Math.round(v * 0.35) }))
 
   return (
     <div className="space-y-8">

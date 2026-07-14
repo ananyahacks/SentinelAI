@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, ArrowUpDown, ChevronRight } from 'lucide-react'
 import { ResponsiveContainer, LineChart, Line } from 'recharts'
 import RiskBadge from '../components/RiskBadge.jsx'
 import RiskGauge from '../components/RiskGauge.jsx'
 import { users } from '../data/mockData.js'
+import axiosClient from '../api/axiosClient.js'
 
 const TIERS = ['All', 'Critical', 'High', 'Medium', 'Low']
 
@@ -12,15 +13,47 @@ export default function RiskAnalysis() {
   const [query, setQuery] = useState('')
   const [tier, setTier] = useState('All')
   const [sortDesc, setSortDesc] = useState(true)
+  const [usersList, setUsersList] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadRiskScores() {
+      try {
+        const response = await axiosClient.get('/anomaly/scores')
+        if (response.data && response.data.length > 0) {
+          const mapped = response.data.map((sc, idx) => ({
+            id: sc.userId || `U-${1000 + idx}`,
+            name: sc.employeeName,
+            dept: 'Operations',
+            role: 'Staff',
+            riskScore: Math.round(sc.riskScore * 100),
+            tier: sc.riskLevel === 'CRITICAL' ? 'Critical' : sc.riskLevel === 'HIGH' ? 'High' : sc.riskLevel === 'MEDIUM' ? 'Medium' : 'Low',
+            lastActive: 'Active',
+            anomalies: sc.isAnomaly ? 1 : 0,
+            trend: [20, 25, 30, sc.riskScore * 100]
+          }))
+          setUsersList(mapped)
+        } else {
+          setUsersList(users)
+        }
+      } catch (err) {
+        console.error('Failed to load risk scores, using mock users', err)
+        setUsersList(users)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadRiskScores()
+  }, [])
 
   const filtered = useMemo(() => {
-    let list = users.filter((u) =>
+    let list = usersList.filter((u) =>
       (tier === 'All' || u.tier === tier) &&
       (u.name.toLowerCase().includes(query.toLowerCase()) || u.dept.toLowerCase().includes(query.toLowerCase()))
     )
     list = list.sort((a, b) => (sortDesc ? b.riskScore - a.riskScore : a.riskScore - b.riskScore))
     return list
-  }, [query, tier, sortDesc])
+  }, [query, tier, sortDesc, usersList])
 
   return (
     <div className="space-y-5">

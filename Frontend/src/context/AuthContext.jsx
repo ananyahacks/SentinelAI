@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback } from 'react'
+import axiosClient from '../api/axiosClient.js'
 
 const AuthContext = createContext(null)
 
@@ -26,33 +27,74 @@ export function AuthProvider({ children }) {
   })
 
   const login = useCallback(async (email, password) => {
-    // Swap this block for: await axiosClient.post('/auth/login', { email, password })
-    const record = DEMO_USERS[email.trim().toLowerCase()]
-    await new Promise((r) => setTimeout(r, 650))
-    if (!record || record.password !== password) {
-      throw new Error('Invalid email or password.')
+    try {
+      const response = await axiosClient.post('/auth/login', {
+        useremail: email,
+        userpassword: password
+      })
+      const { token, user: backendUser } = response.data
+
+      let mappedRole = 'security_analyst'
+      if (backendUser.role === 'ADMIN') {
+        mappedRole = 'company_admin'
+      } else if (backendUser.role === 'SECURITY_ANALYST') {
+        mappedRole = 'security_analyst'
+      } else {
+        mappedRole = backendUser.role?.toLowerCase()
+      }
+
+      const sessionUser = {
+        email: backendUser.email,
+        name: backendUser.username,
+        role: mappedRole,
+        company: backendUser.companyName,
+        initials: backendUser.username.split(' ').map((s) => s[0]).join('').slice(0, 2).toUpperCase()
+      }
+      localStorage.setItem('sentinelai_user', JSON.stringify(sessionUser))
+      localStorage.setItem('sentinelai_token', token)
+      setUser(sessionUser)
+      return sessionUser
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Unable to sign in.'
+      throw new Error(msg)
     }
-    const sessionUser = { email, name: record.name, role: record.role, company: record.company, initials: record.initials }
-    localStorage.setItem('sentinelai_user', JSON.stringify(sessionUser))
-    localStorage.setItem('sentinelai_token', 'demo-jwt-token')
-    setUser(sessionUser)
-    return sessionUser
   }, [])
 
   const registerCompany = useCallback(async (payload) => {
-    // Swap this block for: await axiosClient.post('/auth/register-company', payload)
-    await new Promise((r) => setTimeout(r, 900))
-    const sessionUser = {
-      email: payload.email,
-      name: payload.fullName,
-      role: 'company_admin',
-      company: payload.companyName,
-      initials: payload.fullName.split(' ').map((s) => s[0]).join('').slice(0, 2).toUpperCase()
+    try {
+      const response = await axiosClient.post('/auth/register', {
+        companyname: payload.companyName,
+        companyemail: payload.companyEmail,
+        username: payload.fullName,
+        useremail: payload.email,
+        userpassword: payload.password
+      })
+      const { token, user: backendUser } = response.data
+
+      let mappedRole = 'security_analyst'
+      if (backendUser.role === 'ADMIN') {
+        mappedRole = 'company_admin'
+      } else if (backendUser.role === 'SECURITY_ANALYST') {
+        mappedRole = 'security_analyst'
+      } else {
+        mappedRole = backendUser.role?.toLowerCase()
+      }
+
+      const sessionUser = {
+        email: backendUser.email,
+        name: backendUser.username,
+        role: mappedRole,
+        company: payload.companyName || backendUser.companyName,
+        initials: backendUser.username.split(' ').map((s) => s[0]).join('').slice(0, 2).toUpperCase()
+      }
+      localStorage.setItem('sentinelai_user', JSON.stringify(sessionUser))
+      localStorage.setItem('sentinelai_token', token)
+      setUser(sessionUser)
+      return sessionUser
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Registration failed.'
+      throw new Error(msg)
     }
-    localStorage.setItem('sentinelai_user', JSON.stringify(sessionUser))
-    localStorage.setItem('sentinelai_token', 'demo-jwt-token')
-    setUser(sessionUser)
-    return sessionUser
   }, [])
 
   const logout = useCallback(() => {

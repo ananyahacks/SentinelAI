@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, X, ExternalLink } from 'lucide-react'
 import RiskBadge from '../components/RiskBadge.jsx'
-import { anomalies as allAnomalies } from '../data/mockData.js'
+import { anomalies } from '../data/mockData.js'
+import axiosClient from '../api/axiosClient.js'
 
 const STATUS_STYLES = {
   Open: 'text-risk-critical',
@@ -14,13 +15,45 @@ export default function Anomalies() {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('All')
   const [selected, setSelected] = useState(null)
+  const [anomList, setAnomList] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadAnomalies() {
+      try {
+        const response = await axiosClient.get('/anomaly/scores')
+        if (response.data && response.data.length > 0) {
+          const anomaliesOnly = response.data.filter(a => a.isAnomaly)
+          const mapped = anomaliesOnly.map((a, idx) => ({
+            id: `A-${9000 + idx}`,
+            user: a.employeeName,
+            userId: a.userId || `U-${1000 + idx}`,
+            type: a.riskLevel === 'CRITICAL' ? 'Bulk file download' : 'Off-hours access',
+            severity: a.riskLevel === 'CRITICAL' ? 'Critical' : a.riskLevel === 'HIGH' ? 'High' : 'Medium',
+            time: new Date(a.analyzedAt).toLocaleString(),
+            detail: `${a.employeeName} has anomaly score of ${Math.round(a.riskScore * 100)}`,
+            status: 'Open'
+          }))
+          setAnomList(mapped.length > 0 ? mapped : anomalies)
+        } else {
+          setAnomList(anomalies)
+        }
+      } catch (err) {
+        console.error('Failed to load anomalies, using mock data', err)
+        setAnomList(anomalies)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadAnomalies()
+  }, [])
 
   const filtered = useMemo(() => {
-    return allAnomalies.filter((a) =>
+    return anomList.filter((a) =>
       (status === 'All' || a.status === status) &&
       (a.user.toLowerCase().includes(query.toLowerCase()) || a.type.toLowerCase().includes(query.toLowerCase()))
     )
-  }, [query, status])
+  }, [query, status, anomList])
 
   return (
     <div className="space-y-5">

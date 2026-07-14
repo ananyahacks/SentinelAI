@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { UserPlus, MoreVertical, X } from 'lucide-react'
-import { teamUsers as initialTeam } from '../data/mockData.js'
+import { teamUsers } from '../data/mockData.js'
+import axiosClient from '../api/axiosClient.js'
 
 const STATUS_STYLES = {
   Active: 'bg-signal/10 text-signal border-signal/30',
@@ -9,15 +10,61 @@ const STATUS_STYLES = {
 }
 
 export default function Users() {
-  const [team, setTeam] = useState(initialTeam)
+  const [team, setTeam] = useState([])
   const [showInvite, setShowInvite] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', role: 'Security Analyst' })
 
-  const invite = (e) => {
+  useEffect(() => {
+    async function loadTeam() {
+      try {
+        const response = await axiosClient.get('/users')
+        if (response.data && response.data.length > 0) {
+          const mapped = response.data.map(u => ({
+            id: u._id,
+            name: u.username,
+            email: u.useremail,
+            role: u.role === 'ADMIN' ? 'Company Admin' : u.role === 'SECURITY_ANALYST' ? 'Security Analyst' : u.role,
+            status: 'Active',
+            lastLogin: 'Just now'
+          }))
+          setTeam(mapped)
+        } else {
+          setTeam(teamUsers)
+        }
+      } catch (err) {
+        console.error('Failed to load team, using mock data', err)
+        setTeam(teamUsers)
+      }
+    }
+    loadTeam()
+  }, [])
+
+  const invite = async (e) => {
     e.preventDefault()
-    setTeam((prev) => [{ id: Date.now(), ...form, status: 'Invited', lastLogin: '—' }, ...prev])
-    setForm({ name: '', email: '', role: 'Security Analyst' })
-    setShowInvite(false)
+    try {
+      const backendRole = form.role === 'Company Admin' ? 'ADMIN' : 'SECURITY_ANALYST'
+      const response = await axiosClient.post('/users', {
+        username: form.name,
+        useremail: form.email,
+        userpassword: 'Password123!', // default temporary password
+        role: backendRole
+      })
+      
+      const newUser = response.data.user
+      const mappedNewUser = {
+        id: newUser._id || Date.now(),
+        name: newUser.username,
+        email: newUser.useremail,
+        role: newUser.role === 'ADMIN' ? 'Company Admin' : 'Security Analyst',
+        status: 'Active',
+        lastLogin: '—'
+      }
+      setTeam((prev) => [mappedNewUser, ...prev])
+      setForm({ name: '', email: '', role: 'Security Analyst' })
+      setShowInvite(false)
+    } catch (err) {
+      alert(err.response?.data?.message || err.message || 'Failed to create user.')
+    }
   }
 
   const cycleStatus = (id) => {

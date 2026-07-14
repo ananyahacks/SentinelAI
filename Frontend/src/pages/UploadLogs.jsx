@@ -6,7 +6,7 @@ import {
   CheckCircle2,
   Loader2,
 } from 'lucide-react'
-// import axiosClient from '../api/axiosClient.js'
+import axiosClient from '../api/axiosClient.js'
 
 export default function UploadLogs() {
   const inputRef = useRef(null)
@@ -15,6 +15,7 @@ export default function UploadLogs() {
   const [dragOver, setDragOver] = useState(false)
   const [processing, setProcessing] = useState(false)
   const [done, setDone] = useState(false)
+  const [error, setError] = useState('')
 
   const addFiles = (fileList) => {
     const arr = Array.from(fileList).map((f) => ({
@@ -50,15 +51,23 @@ export default function UploadLogs() {
 
     setProcessing(true)
     setDone(false)
+    setError('')
 
-    // const formData = new FormData()
-    // files.forEach(f => formData.append("logs", f.file))
-    // await axiosClient.post("/logs/upload", formData)
-
-    await new Promise((r) => setTimeout(r, 1500))
-
-    setProcessing(false)
-    setDone(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", files[0].file)
+      await axiosClient.post("/activity/upload", formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+      setDone(true)
+      setFiles([]) // Clear uploaded files list on success
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Pipeline processing failed.')
+    } finally {
+      setProcessing(false)
+    }
   }
 
   return (
@@ -215,6 +224,13 @@ export default function UploadLogs() {
             <div className="flex items-center gap-2 rounded-lg border border-signal/20 bg-signal/10 px-4 py-3 text-sm font-medium text-signal">
               <CheckCircle2 size={18} />
               Pipeline completed successfully. Risk scores have been updated.
+            </div>
+          )}
+
+          {error && (
+            <div className="flex items-center gap-2 rounded-lg border border-risk-critical/20 bg-risk-critical/10 px-4 py-3 text-sm font-medium text-risk-critical">
+              <X size={18} />
+              {error}
             </div>
           )}
         </div>
