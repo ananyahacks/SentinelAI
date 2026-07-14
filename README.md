@@ -45,8 +45,8 @@ The system combines behavioral profiling, feature engineering, anomaly detection
 
 ### Machine Learning
 
-- Scikit-learn
-- Isolation Forest
+- PyTorch (GraphSAGE GNN)
+- Scikit-learn (Isolation Forest)
 
 ### Data Processing
 
@@ -129,11 +129,11 @@ The dataset simulates:
 
 ## Machine Learning Pipeline
 
-- Data Understanding
-- Data Cleaning
-- Feature Engineering
-- Behavioral Baseline Creation
-- Isolation Forest
+- Data Understanding & Preprocessing
+- Feature Engineering & Extraction
+- Anomaly Detection (Isolation Forest)
+- Graph Construction & Neighborhood Aggregation
+- Graph Neural Network Classification (GraphSAGE)
 - Model Evaluation
 
 ---
@@ -152,9 +152,8 @@ Example evaluation metrics:
 
 ## Future Scope
 
-- Autoencoders
-- Graph Neural Networks
-- Explainable AI
+- Autoencoders for reconstruction loss anomalies
+- Explainable AI (XAI) for GNN models (e.g., GNNExplainer)
 - Real-time log streaming
 - SIEM integration
 - SOAR automation
@@ -164,5 +163,6 @@ Example evaluation metrics:
 
 ## Authors
 
-Ananya Chakraborty
-Rushati Ray
+- Ananya Chakraborty
+- Rushati Ray
+- Partha Protim Mondal
